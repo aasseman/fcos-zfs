@@ -1,0 +1,3 @@
+[submodule "layering-examples"]
+	path = layering-examples
+	url = https://github.com/coreos/layering-examples.git

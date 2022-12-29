@@ -1,0 +1,80 @@
+name: Auto update Fedora CoreOS ZFS build
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - '**/README.md'
+  schedule:
+    - cron: '48 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  version_check:
+    runs-on: ubuntu-22.04
+    outputs:
+      pushed_new_version: ${{ steps.commit_new_version.outputs.pushed }}
+      fcos_version: ${{ steps.fetch_version.outputs.fcos_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Get the latest version of Fedora CoreOS
+        id: fetch_version
+        run: |
+          skopeo inspect docker://quay.io/fedora/fedora-coreos:stable | jq -r '.Labels.version' > fcos_version
+          if [[ $(cat fcos_version) =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "FCOS_VERSION=$(cat fcos_version)" >> $GITHUB_ENV
+              echo "fcos_version=$(cat fcos_version)" >> $GITHUB_OUTPUT
+          else
+              echo "Unexpected version format: \"$(cat fcos_version)\"" >> $GITHUB_ENV
+              exit 1
+          fi
+      - name: Add & Commit
+        id: commit_new_version
+        uses: EndBug/add-and-commit@v9
+        with:
+          message: 'Version updated to: ${{ env.FCOS_VERSION }}'
+
+  build:
+    runs-on: ubuntu-22.04
+    needs: version_check
+    if: needs.version_check.outputs.pushed_new_version == 'true'
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Export version to variable
+        run: |
+            export FCOS_VERSION=${{ needs.version_check.outputs.fcos_version }}
+            export FEDORA_VERSION=$(cut -d '.' -f 1 <(echo $FCOS_VERSION))
+            echo "FCOS_VERSION=$FCOS_VERSION" >> $GITHUB_ENV
+            echo "FEDORA_VERSION=$FEDORA_VERSION" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Build Image
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: fcos-zfs
+          tags: stable ${{ env.FCOS_VERSION }}
+          oci: true
+          build-args: |
+            BUILDER_VERSION=${{ env.FEDORA_VERSION }}
+          containerfiles: |
+            ./layering-examples/build-zfs-module/Containerfile
+
+      - name: Push
+        id: push-to-ghcr
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: ghcr.io/aasseman
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print image url
+        run: echo "Image pushed to ${{ steps.push-to-ghcr.outputs.registry-paths }}"
