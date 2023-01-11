@@ -59,7 +59,7 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         with:
           image: fcos-zfs
-          tags: stable ${{ env.FCOS_VERSION }}
+          tags: stable ${{ env.FEDORA_VERSION }} ${{ env.FCOS_VERSION }}
           oci: true
           build-args: |
             BUILDER_VERSION=${{ env.FEDORA_VERSION }}
