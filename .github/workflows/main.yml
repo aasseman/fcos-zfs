@@ -8,6 +8,12 @@ on:
   schedule:
     - cron: '48 8 * * *'
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build even if no new version is available'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   version_check:
@@ -38,7 +44,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     needs: version_check
-    if: needs.version_check.outputs.pushed_new_version == 'true'
+    if: needs.version_check.outputs.pushed_new_version == 'true' || github.event.inputs.force_build == 'true'
     timeout-minutes: 360
     steps:
       - name: Checkout
