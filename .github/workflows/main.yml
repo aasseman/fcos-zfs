@@ -17,7 +17,7 @@ on:
 
 jobs:
   version_check:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       pushed_new_version: ${{ steps.commit_new_version.outputs.pushed }}
       fcos_version: ${{ steps.fetch_version.outputs.fcos_version }}
@@ -42,7 +42,7 @@ jobs:
           message: 'Version updated to: ${{ env.FCOS_VERSION }}'
 
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     needs: version_check
     if: needs.version_check.outputs.pushed_new_version == 'true' || github.event.inputs.force_build == 'true'
     timeout-minutes: 360
