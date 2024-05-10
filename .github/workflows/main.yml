@@ -60,13 +60,29 @@ jobs:
             echo "FEDORA_VERSION=$FEDORA_VERSION" >> $GITHUB_ENV
         shell: bash
 
+      - name: Log in to the Container registry
+        uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build
-        uses: docker/build-push-action@v4
+        id: push
+        uses: docker/build-push-action@f2a1d5e99d037542a71f64918e516c093c6f3fc4
         with:
           file: ./layering-examples/build-zfs-module/Containerfile
           build-args: |
             BUILDER_VERSION=${{ env.FEDORA_VERSION }}
+          push: true
           tags: |
             fcos-zfs:stable
             fcos-zfs:${{ env.FEDORA_VERSION }}
             fcos-zfs:${{ env.FCOS_VERSION }}
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
