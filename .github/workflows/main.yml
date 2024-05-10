@@ -48,6 +48,7 @@ jobs:
       packages: write
       contents: read
       attestations: write
+      id-token: write
     if: needs.version_check.outputs.pushed_new_version == 'true' || github.event.inputs.force_build == 'true'
     timeout-minutes: 360
     steps:
