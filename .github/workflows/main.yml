@@ -44,6 +44,10 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     needs: version_check
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
     if: needs.version_check.outputs.pushed_new_version == 'true' || github.event.inputs.force_build == 'true'
     timeout-minutes: 360
     steps:
